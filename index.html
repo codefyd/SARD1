@@ -101,9 +101,11 @@
       padding:6px 0;
     }
 
+    .mobile-nav { display:none !important; }
+
     @media(max-width:640px) {
       .nav-links { display:none; }
-      .mobile-nav { display:flex; justify-content:space-around; }
+      .mobile-nav { display:flex !important; justify-content:space-around; }
     }
 
     .mob-btn {
@@ -794,7 +796,7 @@
       <i class="fas fa-lock" style="font-size:3rem;color:var(--primary);margin-bottom:12px;"></i>
       <h3 style="font-weight:700;color:var(--primary);margin-bottom:8px;">التحضير مقفل</h3>
       <p class="text-muted" style="margin-bottom:16px;">أدخل رمز الدخول للمتابعة</p>
-      <input type="password" id="attCodeInput" class="form-control" placeholder="رمز الدخول..." style="max-width:280px;margin:0 auto 12px;"/>
+      <input type="password" id="attCodeInput" class="form-control" placeholder="رمز الدخول..." style="max-width:280px;margin:0 auto 12px;" onkeydown="if(event.key==='Enter')unlockAttendance()"/>
       <button class="btn-primary-sard" onclick="unlockAttendance()"><i class="fas fa-unlock"></i> فتح التحضير</button>
     </div>
 
@@ -835,7 +837,7 @@
       <i class="fas fa-lock" style="font-size:3rem;color:var(--primary);margin-bottom:12px;"></i>
       <h3 style="font-weight:700;color:var(--primary);margin-bottom:8px;">الإعدادات مقفلة</h3>
       <p class="text-muted" style="margin-bottom:16px;">أدخل رمز المدير للمتابعة</p>
-      <input type="password" id="settingsCodeInput" class="form-control" placeholder="رمز الدخول..." style="max-width:280px;margin:0 auto 12px;"/>
+      <input type="password" id="settingsCodeInput" class="form-control" placeholder="رمز الدخول..." style="max-width:280px;margin:0 auto 12px;" onkeydown="if(event.key==='Enter')unlockSettings()"/>
       <button class="btn-primary-sard" onclick="unlockSettings()"><i class="fas fa-unlock"></i> فتح الإعدادات</button>
     </div>
 
@@ -1178,9 +1180,17 @@ function showApp() {
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('appWrap').style.display = 'block';
   document.getElementById('mainNav').style.display = 'flex';
-  document.getElementById('mobileNav').style.display = 'flex';
+  syncResponsiveNav();
   document.getElementById('navTeacher').textContent = STATE.teacher;
 }
+
+function syncResponsiveNav() {
+  const mobileNav = document.getElementById('mobileNav');
+  if (!mobileNav) return;
+  mobileNav.style.display = window.innerWidth <= 640 ? 'flex' : 'none';
+}
+
+window.addEventListener('resize', syncResponsiveNav);
 
 function loadData() {
   showSpinner();
@@ -1582,7 +1592,8 @@ function getEffectiveSettings(student) {
     warningDeduction: tc && tc.warningDeduction != null ? Number(tc.warningDeduction) : Number(s.warningDeduction || 0.25),
     passingScorePerSection: tc && tc.passingScorePerSection ? Number(tc.passingScorePerSection) : Number(s.passingScorePerSection || 7),
     requireFailReason: !!s.requireFailReason,
-    editSectionsCode: s.editSectionsCode || ''
+    editSectionsCode: s.editSectionsCode || '',
+    showDeleteSectionButton: !!s.showDeleteSectionButton
   };
 }
 
