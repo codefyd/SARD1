@@ -2,6 +2,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -920,6 +921,18 @@
             <div class="toggle-knob"></div>
           </label>
         </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">إظهار زر حذف المقطع</div>
+            <div class="setting-desc">يُظهر زر حذف تسجيل المقطع داخل وضع التعديل بعد حفظه</div>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" id="s-showDeleteSection" />
+            <div class="toggle-track"></div>
+            <div class="toggle-knob"></div>
+          </label>
+        </div>
       </div>
 
       <div class="card-sard animate-in">
@@ -1625,9 +1638,11 @@ function renderSections() {
             <div class="score-circle ${isPassed ? 'score-pass' : 'score-fail'}" style="width:48px;height:48px;font-size:1rem;">
               ${escapeHtml(String(sec.score ?? 0))}
             </div>
-            <button class="btn-outline-sard" style="padding:5px 10px;font-size:.8rem;" onclick="editSection(${idx})">
-              <i class="fas fa-edit"></i>
-            </button>
+            ${editAllowed ? `
+              <button class="btn-outline-sard" style="padding:5px 10px;font-size:.8rem;" onclick="editSection(${idx})" title="تعديل المقطع">
+                <i class="fas fa-edit"></i>
+              </button>
+            ` : ''}
           </div>
         </div>
         <div class="d-flex align-center gap-2 flex-wrap">
@@ -1645,13 +1660,20 @@ function renderSections() {
       const usedCombos = getUsedCombos(idx);
 
       card.innerHTML = `
-        <div class="d-flex justify-between align-center" style="margin-bottom:12px;">
+        <div class="d-flex justify-between align-center gap-2 flex-wrap" style="margin-bottom:12px;">
           <span class="badge-sard badge-prim">مقطع ${idx + 1}</span>
-          ${hasData
-            ? `<div class="score-circle ${passed ? 'score-pass' : 'score-fail'}" id="score-circle-${idx}">
-                ${escapeHtml(String(score))} <span style="font-size:.65rem;">/${escapeHtml(String(maxScore))}</span>
-               </div>`
-            : `<div class="score-circle" style="border-color:var(--border);color:var(--text-muted);" id="score-circle-${idx}">—</div>`}
+          <div class="d-flex align-center gap-2">
+            ${sec.wasSavedRead && eff.showDeleteSectionButton ? `
+              <button class="btn-danger-sard" style="padding:5px 10px;font-size:.78rem;" onclick="deleteSavedSection(${idx})" title="حذف تسجيل المقطع">
+                <i class="fas fa-trash"></i>
+              </button>
+            ` : ''}
+            ${hasData
+              ? `<div class="score-circle ${passed ? 'score-pass' : 'score-fail'}" id="score-circle-${idx}">
+                  ${escapeHtml(String(score))} <span style="font-size:.65rem;">/${escapeHtml(String(maxScore))}</span>
+                 </div>`
+              : `<div class="score-circle" style="border-color:var(--border);color:var(--text-muted);" id="score-circle-${idx}">—</div>`}
+          </div>
         </div>
 
         <div class="grid-2" style="margin-bottom:10px;">
@@ -1917,6 +1939,97 @@ function editSection(idx) {
     sec._editing = true;
     renderSections();
   }
+}
+
+function rebuildEvalSectionsFromSaved(student, eff, savedSections) {
+  const numSec = Math.ceil((Number(student.partsCount) || 0) * eff.partsDivisions);
+  STATE.evalSections = [];
+
+  for (let i = 0; i < numSec; i++) {
+    const saved = savedSections[i] || null;
+    if (saved && saved.partNumber) {
+      STATE.evalSections.push({ ...saved, wasSavedRead:true, _editing:false });
+    } else {
+      STATE.evalSections.push({
+        partNumber:'',
+        hizb:'',
+        mistakes:0,
+        warnings:0,
+        score:0,
+        isPassed:false,
+        failFace:'',
+        teacherName:STATE.teacher,
+        wasSavedRead:false,
+        _editing:true
+      });
+    }
+  }
+}
+
+function refreshCurrentStudentRecord() {
+  const student = STATE.evalRecord && STATE.evalRecord.student;
+  const eff = STATE.evalRecord && STATE.evalRecord.eff;
+  if (!student || !eff) return Promise.resolve();
+
+  return _apiGet('getRecords').then(recordsData => {
+    STATE.records = recordsData.records || [];
+    STATE.recordsLoaded = true;
+    const rec = STATE.records.find(r => r.studentId === student.id) || { studentId: student.id, sections: [] };
+    rebuildEvalSectionsFromSaved(student, eff, rec.sections || []);
+    renderStudentHistory(student, rec, eff);
+    renderSections();
+    updateKPI();
+  });
+}
+
+function deleteSavedSection(idx) {
+  const sec = STATE.evalSections[idx];
+  if (!sec || !sec.wasSavedRead) return;
+
+  Swal.fire({
+    icon:'warning',
+    title:'حذف تسجيل المقطع',
+    text:`هل تريد حذف تسجيل مقطع ${idx + 1}؟`,
+    showCancelButton:true,
+    confirmButtonText:'نعم، احذف',
+    cancelButtonText:'إلغاء',
+    confirmButtonColor:'#c0392b',
+    cancelButtonColor:'#014979'
+  }).then(result => {
+    if (!result.isConfirmed) return;
+
+    const student = STATE.evalRecord.student;
+    const today = new Date().toISOString().split('T')[0];
+    const nextSections = STATE.evalSections.map((item, i) => (i === idx ? {
+      partNumber:'',
+      hizb:'',
+      mistakes:0,
+      warnings:0,
+      score:0,
+      isPassed:false,
+      failFace:'',
+      teacherName:STATE.teacher,
+      wasSavedRead:false,
+      _editing:true
+    } : item));
+
+    showSpinner();
+    _apiPost('saveRecord', {
+      studentId: student.id,
+      teacherName: STATE.teacher,
+      date: today,
+      sections: nextSections
+    })
+      .then(() => refreshCurrentStudentRecord())
+      .then(() => {
+        hideSpinner();
+        showToast('تم حذف تسجيل المقطع', 'success');
+      })
+      .catch(err => {
+        hideSpinner();
+        showToast('تعذر حذف تسجيل المقطع: ' + (err.message || err), 'error');
+      });
+  });
 }
 
 // ===== بناء رسالة واتساب مع كل المتغيرات =====
@@ -2310,6 +2423,7 @@ function loadSettingsForm() {
     document.getElementById('s-activeTrack').value = s.activeTrackForSelection || '';
     document.getElementById('s-showReports').checked = !!s.showReportsButton;
     document.getElementById('s-lockFullFile').checked = !!s.lockFullFile;
+    document.getElementById('s-showDeleteSection').checked = !!s.showDeleteSectionButton;
     document.getElementById('s-lockCode').value = '';
     document.getElementById('s-editCode').value = '';
     document.getElementById('s-whatsapp').value = s.whatsappTemplate || '';
@@ -2345,6 +2459,7 @@ function doSaveSettings() {
     activeTrackForSelection: document.getElementById('s-activeTrack').value.trim(),
     showReportsButton: document.getElementById('s-showReports').checked,
     lockFullFile: document.getElementById('s-lockFullFile').checked,
+    showDeleteSectionButton: document.getElementById('s-showDeleteSection').checked,
     editSectionsCode: document.getElementById('s-editCode').value.trim(),
     whatsappTemplate: document.getElementById('s-whatsapp').value.trim()
   };
