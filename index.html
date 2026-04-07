@@ -3,6 +3,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -644,7 +645,43 @@
     input[type="number"].native-input::-webkit-inner-spin-button {
       -webkit-appearance:none;
     }
-  </style>
+  
+
+    .codef-credit{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      margin:22px auto 10px;
+      padding:10px 14px;
+      font-size:.88rem;
+      color:var(--text-muted);
+      flex-wrap:wrap;
+    }
+
+    .codef-credit a{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      color:var(--primary);
+      text-decoration:none;
+      font-weight:800;
+      transition:all .2s ease;
+    }
+
+    .codef-credit a:hover{
+      color:var(--primary-dk);
+      transform:translateY(-1px);
+    }
+
+    .codef-credit img{
+      width:18px;
+      height:18px;
+      object-fit:contain;
+      display:block;
+    }
+
+</style>
 </head>
 <body>
 
@@ -668,10 +705,9 @@
     </button>
     <button class="nav-link-btn" onclick="showView('attendance')" id="nb-attendance">
       <i class="fas fa-clipboard-check"></i> التحضير
-    </button>
-    <button class="nav-link-btn" onclick="window.open(buildReportUrl('c/1.html'),'_blank')" id="nb-reports" style="display:none;">
-      <i class="fas fa-chart-bar"></i> التقارير
-    </button>
+    <button class="nav-link-btn" onclick="window.open('c/1.html','_blank')" id="nb-reports" style="display:none;">
+  <i class="fas fa-chart-bar"></i> التقارير
+</button>
     <button class="nav-link-btn" onclick="showView('settings')" id="nb-settings">
       <i class="fas fa-cog"></i> الإعدادات
     </button>
@@ -692,9 +728,9 @@
   <button class="mob-btn" onclick="showView('attendance')" id="mb-attendance">
     <i class="fas fa-clipboard-check"></i><span>التحضير</span>
   </button>
-  <button class="mob-btn" onclick="window.open(buildReportUrl('c/1.html'),'_blank')" id="mb-reports" style="display:none;">
-    <i class="fas fa-chart-bar"></i><span>التقارير</span>
-  </button>
+  <button class="mob-btn" onclick="window.open('c/1.html','_blank')" id="mb-reports" style="display:none;">
+  <i class="fas fa-chart-bar"></i><span>التقارير</span>
+</button>
   <button class="mob-btn" onclick="showView('settings')" id="mb-settings">
     <i class="fas fa-cog"></i><span>الإعدادات</span>
   </button>
@@ -1003,19 +1039,19 @@
         <div class="card-title"><i class="fas fa-chart-bar"></i> التقارير</div>
         <p class="text-muted" style="font-size:.85rem;margin-bottom:14px;">فتح صفحات التقارير في تبويب جديد</p>
         <div style="display:flex;flex-direction:column;gap:10px;">
-          <a href="javascript:void(0)" onclick="window.open(buildReportUrl('c/1.html'),'_blank')" target="_blank" class="btn-primary-sard" style="justify-content:flex-start;text-decoration:none;">
-            <i class="fas fa-mosque"></i> تقرير المجمع والحلق
-          </a>
-          <a href="javascript:void(0)" onclick="window.open(buildReportUrl('c/2.html'),'_blank')" target="_blank" class="btn-outline-sard" style="text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
-            <i class="fas fa-list-alt"></i> تقرير الحلق التفصيلي
-          </a>
-          <a href="javascript:void(0)" onclick="window.open(buildReportUrl('c/4.html'),'_blank')" target="_blank" class="btn-outline-sard" style="text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
-            <i class="fas fa-list-alt"></i> صفحة التكريم
-          </a>
-          <a href="javascript:void(0)" onclick="window.open(buildReportUrl('c/3.html'),'_blank')" target="_blank" class="btn-outline-sard" style="text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
-            <i class="fas fa-search"></i> استعلام نتائج الطلاب
-          </a>
-        </div>
+  <a href="c/1.html" target="_blank" class="btn-primary-sard" style="justify-content:flex-start;text-decoration:none;">
+    <i class="fas fa-mosque"></i> تقرير المجمع والحلق
+  </a>
+  <a href="c/2.html" target="_blank" class="btn-outline-sard" style="text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
+    <i class="fas fa-list-alt"></i> تقرير الحلق التفصيلي
+  </a>
+  <a href="c/4.html" target="_blank" class="btn-outline-sard" style="text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
+    <i class="fas fa-list-alt"></i> صفحة التكريم
+  </a>
+  <a href="c/3.html" target="_blank" class="btn-outline-sard" style="text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
+    <i class="fas fa-search"></i> استعلام نتائج الطلاب
+  </a>
+</div>
       </div>
 
       <div class="card-sard animate-in">
@@ -1037,12 +1073,10 @@
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbzUcnpxuZxXDgks1FaZqmo8XN--MaYcCZWFLVuRW5q7HsY93gjG3ff2Qps_ew6Nbql5/exec";
+const API = "https://script.google.com/macros/s/AKfycbxfAz3YTvh9okkdxDkqjet_mlrK19ngI1KG1CCJObmIYE1_Ao2qKQHpyIqO9eTCFOjRZA/exec";
 try { localStorage.setItem('sard_api_url', API); } catch(_e) {}
-function buildReportUrl(path) {
-  try { localStorage.setItem('sard_api_url', API); } catch(_e) {}
-  return path + (path.indexOf('?') === -1 ? '?' : '&') + 'api=' + encodeURIComponent(API);
-}
+
+
 
 function _buildUrl(action, params = {}) {
   const url = new URL(API);
@@ -2634,5 +2668,14 @@ function jsString(value) {
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<div class="codef-credit">
+  <span>صنع بواسطة</span>
+  <a href="https://codefyd.github.io/CODEF1/" target="_blank" rel="noopener noreferrer">
+    <img src="https://i.ibb.co/VyGwJgs/1561.png" alt="Codef Logo">
+    <span>codef</span>
+  </a>
+</div>
+
 </body>
 </html>
