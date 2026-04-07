@@ -3,7 +3,6 @@
 
 
 
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -141,20 +140,7 @@
   <div class="spinner-wrap animate-in"><div class="spinner"></div><span class="text-muted">جاري تحميل التقرير...</span></div>
 </div>
 <script>
-const API_FALLBACK="https://script.google.com/macros/s/AKfycbzUcnpxuZxXDgks1FaZqmo8XN--MaYcCZWFLVuRW5q7HsY93gjG3ff2Qps_ew6Nbql5/exec";
-function resolveApiUrl(){
-  try {
-    var qp=new URLSearchParams(window.location.search).get('api');
-    if(qp){
-      localStorage.setItem('sard_api_url', qp);
-      return qp;
-    }
-    var stored=localStorage.getItem('sard_api_url');
-    if(stored) return stored;
-  } catch(_e) {}
-  return API_FALLBACK;
-}
-const API=resolveApiUrl();
+const API="https://script.google.com/macros/s/AKfycbxfAz3YTvh9okkdxDkqjet_mlrK19ngI1KG1CCJObmIYE1_Ao2qKQHpyIqO9eTCFOjRZA/exec";
 
 async function apiGet(action, params){
   var url=new URL(API);
@@ -407,7 +393,7 @@ function buildSpecialTabsHtml(selectedStudents){
     }).join('');
   }
 
-  var exportBtnHtml = '<button class="btn-excel-sard" onclick="exportSpecialTab(\''+_specialTab+'\')"><i class="fas fa-file-export"></i> تصدير</button>';
+  var exportBtnHtml = '<button class="btn-excel-sard" onclick="exportSpecialTab(_specialTab)"><i class="fas fa-file-export"></i> تصدير</button>';
 
   return ''
     + '<div class="card-sard animate-in">'
