@@ -1,9 +1,4 @@
 
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -228,7 +223,43 @@
     .print-cert-root .cert-wave-top{top:-36px !important;}
     .print-cert-root .cert-footer{margin-top:16px !important;}
     .print-cert-root .cert-footer-text{font-size:1.2rem !important;}
-  </style>
+  
+
+    .codef-credit{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      margin:22px auto 10px;
+      padding:10px 14px;
+      font-size:.88rem;
+      color:var(--text-muted);
+      flex-wrap:wrap;
+    }
+
+    .codef-credit a{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      color:var(--primary);
+      text-decoration:none;
+      font-weight:800;
+      transition:all .2s ease;
+    }
+
+    .codef-credit a:hover{
+      color:var(--primary-dk);
+      transform:translateY(-1px);
+    }
+
+    .codef-credit img{
+      width:18px;
+      height:18px;
+      object-fit:contain;
+      display:block;
+    }
+
+</style>
 </head>
 <body>
 
@@ -243,9 +274,9 @@
 <div class="page-wrap">
   <div class="card-sard animate-in">
     <div class="card-title"><i class="fas fa-magnifying-glass" style="color:var(--gold);"></i> الاستعلام عن نتيجة الطالب</div>
-    <p class="text-muted" style="margin-bottom:14px;">البحث عبر: <b>جوال ولي الأمر</b> أو <b>هوية الطالب </b> فقط</p>
+    <p class="text-muted" style="margin-bottom:14px;">البحث عبر: <b>جوال ولي الأمر</b> أو <b>هوية/معرّف الطالب</b> فقط — <b>رقم الطالب غير مقبول</b></p>
     <div class="d-flex gap-2">
-      <input id="q" type="text" class="search-input" placeholder="أدخل هوية الطالب أو جوال ولي الأمر" autocomplete="off"/>
+      <input id="q" type="text" class="search-input" placeholder="أدخل هوية/معرّف الطالب أو جوال ولي الأمر فقط" autocomplete="off"/>
       <button id="btn" class="btn-primary-sard" onclick="run()" style="white-space:nowrap;height:50px;">
         <i class="fas fa-search" id="ico"></i> بحث
       </button>
@@ -563,18 +594,64 @@ function renderCard(r,idx){
 
 function normalizePhone(p){if(!p)return'';var d=String(p).replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('966'))return d;if(d.startsWith('0'))return'966'+d.slice(1);return d;}
 
+function getLookupWhatsappTemplate(){
+  var s = (__initCache && __initCache.settings) ? __initCache.settings : {};
+  return String(s.whatsappTemplate || '').trim();
+}
+function buildLookupWhatsappMessage(stu, sum, sections){
+  var tpl = getLookupWhatsappTemplate();
+  if(!tpl){
+    tpl = 'السلام عليكم، طالبنا {اسم_الطالب} في حلقة {الحلقة}، درجته {الدرجة}.';
+  }
+
+  sections = Array.isArray(sections) ? sections : [];
+
+  var div = Number(sum.partsDivisions || detDiv(sections) || 1);
+
+  var totalSections  = Number(sum.totalSections || sections.length || 0);
+  var passedSections = Number(sum.passedSections || 0);
+  var failedSections = Number(sum.failedSections || 0);
+
+  var shownParts  = partsValue(totalSections, div);
+  var passedParts = partsValue(passedSections, div);
+  var failedParts = partsValue(failedSections, div);
+
+  var partsSaved = Number(stu.partsCount || 0);
+  var totalScore = calcEffectiveTotalScore(sections);
+  var percent = shownParts > 0
+    ? Math.round((Number(totalScore || 0) / (shownParts * 20)) * 100)
+    : 0;
+
+  var lastSec = sections.length ? sections[sections.length - 1] : {};
+
+  return tpl
+    .replace(/{اسم_الطالب}/g, String(stu.name || ''))
+    .replace(/{الحلقة}/g, String(stu.halaqa || ''))
+    .replace(/{الدرجة}/g, String(lastSec.score || totalScore || 0))
+    .replace(/{المسمع}/g, String(lastSec.teacherName || ''))
+    .replace(/{اجزاء_مجتازة}/g, String(fPart(passedParts)))
+    .replace(/{اجزاء_رسوب}/g, String(fPart(failedParts)))
+    .replace(/{اجزاء_محفوظة}/g, String(partsSaved))
+    .replace(/{اجزاء_معروضة}/g, String(fPart(shownParts)))
+    .replace(/{النسبة}/g, String(percent) + '%');
+}
+
 function doWA(idx){
-  var r=(window.__res||[])[idx];if(!r)return;
-  var stu=r.student||{};var sum=r.summary||{};var sections=Array.isArray(r.sections)?r.sections:[];
-  var totalScore=calcEffectiveTotalScore(sections);
-  var phone=normalizePhone(stu.guardianPhone);if(!phone){alert('لا يوجد رقم ولي أمر');return;}
-  var msg='السلام عليكم ورحمة الله وبركاته\n\nولي أمر الطالب: '+(stu.name||'')
-    +'\n\nنتيجة عرض السرد:\nعدد المقاطع: '+(sum.totalSections||0)
-    +'\nالمجتاز: '+(sum.passedSections||0)
-    +'\nالرسوب: '+(sum.failedSections||0)
-    +'\nمجموع الدرجات: '+fP(totalScore)
-    +'\n\nبارك الله في الجهود.';
-  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
+  var r = (window.__res || [])[idx];
+  if(!r) return;
+
+  var stu = r.student || {};
+  var sum = r.summary || {};
+  var sections = Array.isArray(r.sections) ? r.sections : [];
+  var phone = normalizePhone(stu.guardianPhone);
+
+  if(!phone){
+    alert('لا يوجد رقم ولي أمر');
+    return;
+  }
+
+  var msg = buildLookupWhatsappMessage(stu, sum, sections);
+  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
 /* =====================================================
@@ -728,7 +805,7 @@ function setLoading(on){document.getElementById('ico').className=on?'fas fa-spin
 
 function run(){
   var raw=(document.getElementById('q').value||'').trim();
-  if(!raw){showEmpty('أدخل هوية الطالب أو جوال ولي الأمر.');return;}
+  if(!raw){showEmpty('أدخل هوية/معرّف الطالب أو جوال ولي الأمر فقط.');return;}
   document.getElementById('tabs').style.display='none';
   document.getElementById('out').innerHTML='';
   setLoading(true);
@@ -739,7 +816,8 @@ function run(){
 
 function handleResp(resp){
   updateSearchCounter(resp && resp.stats ? resp.stats : null);
-  if(!resp||!resp.ok||!Array.isArray(resp.results)||!resp.results.length){showEmpty('لم يُعثَر على نتيجة. تحقق من هوية الطالب أو جوال ولي الأمر فقط.');return;}
+  if(resp && resp.blockedReason==='student_phone_not_allowed'){showEmpty('رقم الطالب غير معتمد في الاستعلام. استخدم جوال ولي الأمر أو هوية/معرّف الطالب فقط.');return;}
+  if(!resp||!resp.ok||!Array.isArray(resp.results)||!resp.results.length){showEmpty('لم يُعثَر على نتيجة. تحقق من هوية/معرّف الطالب أو جوال ولي الأمر فقط.');return;}
   window.__res=resp.results;
   if(resp.results.length>1){
     var t=document.getElementById('tabs');t.style.display='flex';
@@ -758,5 +836,14 @@ function setTab(i){
 function showEmpty(m){document.getElementById('out').innerHTML='<div class="card-sard" style="text-align:center;padding:32px;color:var(--text-muted);"><i class="fas fa-search" style="font-size:2rem;margin-bottom:8px;display:block;opacity:.3;"></i>'+escH(m)+'</div>';}
 function showError(m){document.getElementById('out').innerHTML='<div class="card-sard" style="text-align:center;padding:32px;color:var(--danger);">'+escH(m)+'</div>';}
 </script>
+
+<div class="codef-credit">
+  <span>صنع بواسطة</span>
+  <a href="https://codefyd.github.io/CODEF1/" target="_blank" rel="noopener noreferrer">
+    <img src="https://i.ibb.co/VyGwJgs/1561.png" alt="Codef Logo">
+    <span>codef</span>
+  </a>
+</div>
+
 </body>
 </html>
