@@ -2576,6 +2576,33 @@ function doSaveSettings() {
     .saveSettings(newSettings);
 }
 
+
+  function getTrackNameOptions(selectedValue) {
+  var namesMap = {};
+  (STATE.students || []).forEach(function(s){
+    var name = String((s && s.track) || '').trim();
+    if (name) namesMap[name] = true;
+  });
+
+  if (selectedValue && String(selectedValue).trim()) {
+    namesMap[String(selectedValue).trim()] = true;
+  }
+
+  var names = Object.keys(namesMap).sort(function(a, b){
+    return a.localeCompare(b, 'ar');
+  });
+
+  if (!names.length) {
+    return '<option value="">لا توجد مسارات متاحة</option>';
+  }
+
+  return names.map(function(name){
+    var sel = String(selectedValue || '').trim() === name ? ' selected' : '';
+    return '<option value="' + escapeAttr(name) + '"' + sel + '>' + escapeHtml(name) + '</option>';
+  }).join('');
+}
+
+  
 function renderTrackConfigs() {
   const list = document.getElementById('trackConfigsList');
   list.innerHTML = '';
@@ -2591,30 +2618,37 @@ function renderTrackConfigs() {
           <i class="fas fa-trash"></i>
         </button>
       </div>
+
       <div class="grid-2" style="gap:8px;">
         <div>
           <label class="text-muted" style="font-size:.8rem;">اسم المسار</label>
-          <input class="form-control" value="${escapeAttr(tc.name || '')}" onchange="updateTC(${idx},'name',this.value)"/>
-        </div>
-        <div>
-          <label class="text-muted" style="font-size:.8rem;">تقسيم الجزء</label>
-          <select class="form-select" onchange="updateTC(${idx},'partsDivisions',+this.value)">
-            <option ${Number(tc.partsDivisions) === 1 ? 'selected' : ''}>1</option>
-            <option ${Number(tc.partsDivisions) === 2 ? 'selected' : ''}>2</option>
-            <option ${Number(tc.partsDivisions) === 4 ? 'selected' : ''}>4</option>
+          <select class="form-select" onchange="updateTC(${idx}, 'name', this.value); renderTrackConfigs();">
+            ${getTrackNameOptions(tc.name || '')}
           </select>
         </div>
+
+        <div>
+          <label class="text-muted" style="font-size:.8rem;">تقسيم الجزء</label>
+          <select class="form-select" onchange="updateTC(${idx}, 'partsDivisions', +this.value)">
+            <option value="1" ${Number(tc.partsDivisions) === 1 ? 'selected' : ''}>1</option>
+            <option value="2" ${Number(tc.partsDivisions) === 2 ? 'selected' : ''}>2</option>
+            <option value="4" ${Number(tc.partsDivisions) === 4 ? 'selected' : ''}>4</option>
+          </select>
+        </div>
+
         <div>
           <label class="text-muted" style="font-size:.8rem;">خصم الخطأ</label>
-          <input type="number" class="form-control" step="0.25" value="${escapeAttr(String(tc.mistakeDeduction ?? 0))}" onchange="updateTC(${idx},'mistakeDeduction',+this.value)"/>
+          <input type="number" class="form-control" step="0.25" value="${escapeAttr(String(tc.mistakeDeduction ?? 0))}" onchange="updateTC(${idx}, 'mistakeDeduction', +this.value)"/>
         </div>
+
         <div>
           <label class="text-muted" style="font-size:.8rem;">خصم التنبيه</label>
-          <input type="number" class="form-control" step="0.25" value="${escapeAttr(String(tc.warningDeduction ?? 0))}" onchange="updateTC(${idx},'warningDeduction',+this.value)"/>
+          <input type="number" class="form-control" step="0.25" value="${escapeAttr(String(tc.warningDeduction ?? 0))}" onchange="updateTC(${idx}, 'warningDeduction', +this.value)"/>
         </div>
+
         <div>
           <label class="text-muted" style="font-size:.8rem;">درجة النجاح</label>
-          <input type="number" class="form-control" step="0.5" value="${escapeAttr(String(tc.passingScorePerSection ?? 0))}" onchange="updateTC(${idx},'passingScorePerSection',+this.value)"/>
+          <input type="number" class="form-control" step="0.5" value="${escapeAttr(String(tc.passingScorePerSection ?? 0))}" onchange="updateTC(${idx}, 'passingScorePerSection', +this.value)"/>
         </div>
       </div>
     `;
