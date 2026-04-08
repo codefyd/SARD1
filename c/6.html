@@ -429,25 +429,42 @@ function setSpecialFilter(value){
 
 function loadData(){
   setSpinner('app');
-  apiGet('getDailySummary').then(function(d){
-    _data = transformToTracks(d || {});
+  Promise.all([
+    apiGet('getDailySummary'),
+    apiGet('getStudents')
+  ]).then(function(res){
+    var summary = res[0] || {};
+    var studentsData = res[1] || {};
+    _data = transformToTracks(summary, studentsData.students || []);
     render();
   }).catch(function(e){
     document.getElementById('app').innerHTML='<div class="card-sard" style="text-align:center;padding:32px;color:var(--danger);"><i class="fas fa-exclamation-circle" style="font-size:2rem;margin-bottom:8px;display:block;"></i>خطأ: '+escH(e.message||String(e))+'</div>';
   });
 }
 
-function transformToTracks(raw){
+function transformToTracks(raw, studentsMaster){
   var studentsByHalaqa = raw.studentsByHalaqa || {};
+  var masterById = {};
   var trackMap = {};
   var attendanceAgg = {};
-  var allStudents = [];
+
+  (studentsMaster || []).forEach(function(st){
+    if(st && st.id) masterById[String(st.id)] = st;
+  });
 
   Object.keys(studentsByHalaqa).forEach(function(halaqaName){
     (studentsByHalaqa[halaqaName] || []).forEach(function(st){
-      var trackName = String(st.track || '').trim() || 'بدون مسار';
-      var copy = Object.assign({}, st, { halaqa: halaqaName, track: trackName });
-      allStudents.push(copy);
+      var master = masterById[String(st.id)] || null;
+      var trackName = String(
+        (st && st.track) ||
+        (master && master.track) ||
+        ''
+      ).trim() || 'بدون مسار';
+
+      var copy = Object.assign({}, st, {
+        halaqa: st.halaqa || halaqaName,
+        track: trackName
+      });
 
       if(!trackMap[trackName]) trackMap[trackName] = [];
       trackMap[trackName].push(copy);
@@ -455,6 +472,7 @@ function transformToTracks(raw){
       if(!attendanceAgg[trackName]){
         attendanceAgg[trackName] = {present:0,late:0,excused:0,absent:0};
       }
+
       if(copy.status === 'present') attendanceAgg[trackName].present++;
       else if(copy.status === 'late') attendanceAgg[trackName].late++;
       else if(copy.status === 'excused') attendanceAgg[trackName].excused++;
@@ -462,13 +480,17 @@ function transformToTracks(raw){
     });
   });
 
-  var tracks = Object.keys(trackMap).sort(function(a,b){ return a.localeCompare(b,'ar'); }).map(function(trackName){
+  var tracks = Object.keys(trackMap).sort(function(a,b){
+    return a.localeCompare(b,'ar');
+  }).map(function(trackName){
     var students = trackMap[trackName] || [];
 
     students.sort(function(a,b){
       return Number(b.studentPercent||0) - Number(a.studentPercent||0);
     });
-    students.forEach(function(st, i){ st.rank = i + 1; });
+    students.forEach(function(st, i){
+      st.rank = i + 1;
+    });
 
     var item = {
       name: trackName,
@@ -501,8 +523,12 @@ function transformToTracks(raw){
     return item;
   });
 
-  tracks.sort(function(a,b){ return Number(b.globalPercent||0) - Number(a.globalPercent||0); });
-  tracks.forEach(function(t, i){ t.rank = i + 1; });
+  tracks.sort(function(a,b){
+    return Number(b.globalPercent||0) - Number(a.globalPercent||0);
+  });
+  tracks.forEach(function(t, i){
+    t.rank = i + 1;
+  });
 
   var center = {
     trackCount: tracks.length,
@@ -530,6 +556,7 @@ function transformToTracks(raw){
     center.failedParts += Number(t.failedParts||0);
     center.remainingParts += Number(t.remainingParts||0);
   });
+
   center.coveragePercent = center.expectedParts > 0 ? (center.displayedParts / center.expectedParts) * 100 : 0;
   center.globalPercent = center.expectedParts > 0 ? (center.passedParts / center.expectedParts) * 100 : 0;
 
