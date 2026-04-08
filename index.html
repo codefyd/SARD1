@@ -953,7 +953,7 @@
             <div class="setting-label">المسار النشط</div>
             <div class="setting-desc">مسار يُضاف فوق قائمة الحلقات</div>
           </div>
-          <input type="text" id="s-activeTrack" class="form-control" style="width:160px;" placeholder="اختياري"/>
+          <select id="s-activeTrack" class="form-select" style="width:180px;"></select>
         </div>
 
         <div class="setting-row">
@@ -2500,7 +2500,7 @@ function loadSettingsForm() {
     document.getElementById('s-showTrack').checked = !!s.showTrackInSelection;
     document.getElementById('s-hideHalaqas').checked = !!s.hideHalaqasAndUseTracksOnly;
     document.getElementById('s-requireFail').checked = !!s.requireFailReason;
-    document.getElementById('s-activeTrack').value = s.activeTrackForSelection || '';
+    renderActiveTrackOptions(s.activeTrackForSelection || '');
     document.getElementById('s-showReports').checked = !!s.showReportsButton;
     document.getElementById('s-lockFullFile').checked = !!s.lockFullFile;
     document.getElementById('s-showDeleteSection').checked = !!s.showDeleteSectionButton;
@@ -2556,8 +2556,6 @@ function doSaveSettings() {
           Swal.fire({
             icon:'success',
             title:'تم الحفظ!',
-            confirmButtonColor:'#014979',
-            confirmButtonText:'ممتاز',
             timer:1800,
             timerProgressBar:true
           });
@@ -2576,6 +2574,32 @@ function doSaveSettings() {
     .saveSettings(newSettings);
 }
 
+  function renderActiveTrackOptions(selectedValue) {
+  var el = document.getElementById('s-activeTrack');
+  if (!el) return;
+
+  var namesMap = {};
+  (STATE.students || []).forEach(function(s){
+    var name = String((s && s.track) || '').trim();
+    if (name) namesMap[name] = true;
+  });
+
+  if (selectedValue && String(selectedValue).trim()) {
+    namesMap[String(selectedValue).trim()] = true;
+  }
+
+  var names = Object.keys(namesMap).sort(function(a, b){
+    return a.localeCompare(b, 'ar');
+  });
+
+  var html = '<option value="">بدون مسار نشط</option>';
+  html += names.map(function(name){
+    var sel = String(selectedValue || '').trim() === name ? ' selected' : '';
+    return '<option value="' + escapeAttr(name) + '"' + sel + '>' + escapeHtml(name) + '</option>';
+  }).join('');
+
+  el.innerHTML = html;
+}
 
   function getTrackNameOptions(selectedValue) {
   var namesMap = {};
