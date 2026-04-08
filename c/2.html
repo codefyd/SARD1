@@ -379,7 +379,7 @@ function loadData(opts){
     _lastUpdatedAt=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
     render({preserveScroll:isBackground});
     _isFirstLoad=false;
-    setRefreshText('آخر تحديث ' + _lastUpdatedAt + ' • مطابق لملخص السيرفر');
+    setRefreshText('آخر تحديث ' + _lastUpdatedAt + '');
   }).catch(function(e){
     if(!_data || !isBackground){
       document.getElementById('app').innerHTML='<div class="card-sard" style="text-align:center;padding:32px;color:var(--danger);"><i class="fas fa-exclamation-circle" style="font-size:2rem;margin-bottom:8px;display:block;"></i>خطأ: '+escH(e.message||String(e))+'</div>';
