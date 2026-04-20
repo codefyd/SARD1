@@ -814,7 +814,7 @@
     <div id="sectionsContainer"></div>
 
     <div class="sticky-bottom mt-3">
-      <button class="btn-primary-sard w-100" onclick="doSaveRecord()" style="padding:14px;font-size:1rem;justify-content:center;border-radius:var(--radius);" id="saveBtn">
+      <button class="btn-primary-sard w-100" id="saveRecordBtn" onclick="doSaveRecord()" style="padding:14px;font-size:1rem;justify-content:center;border-radius:var(--radius);" id="saveBtn">
         <i class="fas fa-save"></i> حفظ النتيجة
       </button>
     </div>
@@ -1069,7 +1069,7 @@
       </div>
 
       <div class="text-center mt-4 animate-in">
-        <button class="btn-primary-sard" onclick="doSaveSettings()" style="padding:12px 36px;font-size:1rem;">
+        <button class="btn-primary-sard" onclick="doSaveSettings()" id="saveSettingsBtn" style="padding:12px 36px;font-size:1rem;">
           <i class="fas fa-save"></i> حفظ جميع الإعدادات
         </button>
       </div>
@@ -1081,7 +1081,7 @@
 // =============================================
 // API CONFIG — متعدد المجمعات
 // =============================================
-const API = "https://script.google.com/macros/s/AKfycbzUcnpxuZxXDgks1FaZqmo8XN--MaYcCZWFLVuRW5q7HsY93gjG3ff2Qps_ew6Nbql5/exec";
+const API = "https://script.google.com/macros/s/AKfycbxfAz3YTvh9okkdxDkqjet_mlrK19ngI1KG1CCJObmIYE1_Ao2qKQHpyIqO9eTCFOjRZA/exec";
 
 // ── قراءة complexId من الـ URL أو localStorage ──
 (function _initComplexId() {
@@ -1398,15 +1398,30 @@ function doLogout() {
 function _doShowView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const target = document.getElementById('view-' + id);
-  if (target) target.classList.add('active');
+  if (target) {
+    target.classList.add('active');
+    target.style.opacity = '0';
+    target.style.transform = 'translateY(8px)';
+    requestAnimationFrame(() => {
+      target.style.transition = 'opacity .22s ease, transform .22s ease';
+      target.style.opacity    = '1';
+      target.style.transform  = 'none';
+    });
+  }
   document.querySelectorAll('.nav-link-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active'));
   const nb = document.getElementById('nb-' + id);
   const mb = document.getElementById('mb-' + id);
-  if (nb) nb.classList.add('active');
+  if (nb) { nb.classList.add('active'); _pulseBtn(nb); }
   if (mb) mb.classList.add('active');
   if (id === 'attendance') checkAttendanceLock();
   window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function _pulseBtn(el) {
+  if (!el) return;
+  el.style.transform = 'scale(0.93)';
+  setTimeout(() => { el.style.transform = ''; }, 150);
 }
 
 function hasUnsavedWork() {
@@ -2275,25 +2290,24 @@ function doSaveRecord() {
   }).then(r => {
     if (!r.isConfirmed) return;
     const today = new Date().toISOString().split('T')[0];
-    showSpinner();
+    const recBtn = document.getElementById('saveRecordBtn');
+    _btnLoading(recBtn, 'جارٍ الحفظ...');
     STATE.recordsLoading = true;
     google.script.run
       .withSuccessHandler(() => {
-        hideSpinner();
-        Swal.fire({ icon:'success', title:'تم الحفظ!', text:'تم حفظ نتيجة ' + (student.name || '') + ' بنجاح', confirmButtonColor:'#014979', confirmButtonText:'ممتاز' })
-          .then(() => {
-            // يبقى في صفحة الطالب — يُعيد تحميل البيانات ويُعيد رسم نفس الطالب
-            _apiGet('getRecords')
-              .then(recordsData => {
-                STATE.records = recordsData.records || STATE.records;
-                STATE.recordsLoaded = true;
-                STATE.recordsLoading = false;
-                startEvaluation();
-              })
-              .catch(() => {});
-          });
+        _btnReset(recBtn);
+        showSaveSuccess('تم حفظ نتيجة ' + (student.name || '') + ' ✓');
+        // يُعيد تحميل البيانات ويُعيد رسم نفس الطالب
+        _apiGet('getRecords')
+          .then(recordsData => {
+            STATE.records = recordsData.records || STATE.records;
+            STATE.recordsLoaded = true;
+            STATE.recordsLoading = false;
+            startEvaluation();
+          })
+          .catch(() => {});
       })
-      .withFailureHandler(err => { hideSpinner(); showToast('خطأ في الحفظ: ' + (err.message || err), 'error'); })
+      .withFailureHandler(err => { _btnReset(recBtn); showToast('خطأ في الحفظ: ' + (err.message || err), 'error'); })
       .saveRecord({ studentId: student.id, teacherName: STATE.teacher, date: today, sections: STATE.evalSections });
   });
 }
@@ -2546,24 +2560,16 @@ function doSaveAttendance() {
   };
 
   const saveBtn = document.getElementById('attSaveBtn');
-  saveBtn.disabled = true;
+  _btnLoading(saveBtn, 'جارٍ الحفظ...');
 
   google.script.run
     .withSuccessHandler(() => {
-      saveBtn.disabled = false;
-      Swal.fire({
-        icon:'success',
-        title:'تم الحفظ!',
-        text:'تم حفظ تحضير ' + filtered.length + ' طالب',
-        confirmButtonColor:'#014979',
-        confirmButtonText:'ممتاز',
-        timer:2000,
-        timerProgressBar:true
-      });
+      _btnReset(saveBtn);
+      showSaveSuccess('تم حفظ تحضير ' + filtered.length + ' طالب ✓');
     })
     .withFailureHandler(err => {
-      saveBtn.disabled = false;
-      showToast('خطأ: ' + (err.message || err), 'error');
+      _btnReset(saveBtn);
+      showToast('خطأ في الحفظ: ' + (err.message || err), 'error');
     })
     .saveSardAttendance(payload);
 }
@@ -2633,29 +2639,26 @@ function doSaveSettings() {
   const lockCode = document.getElementById('s-lockCode').value.trim();
   if (lockCode) newSettings.settingsLockCode = lockCode;
 
-  showSpinner();
+  const btn = document.getElementById('saveSettingsBtn');
+  _btnLoading(btn, 'جارٍ الحفظ...');
+
   google.script.run
     .withSuccessHandler(() => {
       google.script.run
         .withSuccessHandler(() => {
-          hideSpinner();
-          Swal.fire({
-            icon:'success',
-            title:'تم الحفظ!',
-            timer:1800,
-            timerProgressBar:true
-          });
+          _btnReset(btn);
+          showSaveSuccess('تم حفظ الإعدادات ✓');
           loadData();
         })
         .withFailureHandler(err => {
-          hideSpinner();
+          _btnReset(btn);
           showToast('تم حفظ الإعدادات لكن فشل حفظ المسارات: ' + (err.message || err), 'warning');
         })
         .saveTrackConfigs(STATE.trackConfigs);
     })
     .withFailureHandler(err => {
-      hideSpinner();
-      showToast('خطأ: ' + (err.message || err), 'error');
+      _btnReset(btn);
+      showToast('خطأ في الحفظ: ' + (err.message || err), 'error');
     })
     .saveSettings(newSettings);
 }
@@ -2779,23 +2782,58 @@ function removeTrackConfig(idx) {
 // =============================================
 // UTILITIES
 // =============================================
-function showSpinner() { document.getElementById('spinner').style.display = 'flex'; }
+function showSpinner(msg) {
+  const sp = document.getElementById('spinner');
+  const p  = sp.querySelector('p');
+  if (p) p.textContent = msg || 'جارٍ التحميل...';
+  sp.style.display = 'flex';
+}
 function hideSpinner() { document.getElementById('spinner').style.display = 'none'; }
 
-function showToast(msg, icon = 'info') {
+function showToast(msg, icon = 'success') {
   Swal.fire({
-    toast:true,
-    position:'top-end',
-    icon,
-    title:msg,
+    toast:            true,
+    position:         'bottom-end',
+    icon:             icon === 'loading' ? 'info' : icon,
+    title:            msg,
     showConfirmButton:false,
-    timer:3000,
-    timerProgressBar:true,
-    didOpen:(t) => {
+    timer:            icon === 'error' ? 4500 : 2800,
+    timerProgressBar: true,
+    customClass:      { popup: 'sard-toast-' + (icon === 'loading' ? 'info' : icon) },
+    didOpen: (t) => {
       t.addEventListener('mouseenter', Swal.stopTimer);
       t.addEventListener('mouseleave', Swal.resumeTimer);
     }
   });
+}
+
+// رسالة حفظ جميلة موحّدة
+function showSaveSuccess(msg) {
+  Swal.fire({
+    toast:            true,
+    position:         'bottom-end',
+    icon:             'success',
+    title:            msg || 'تم الحفظ بنجاح ✓',
+    showConfirmButton:false,
+    timer:            2200,
+    timerProgressBar: true
+  });
+}
+
+// زر يُظهر تفاعلاً بصرياً أثناء العملية
+function _btnLoading(btnEl, loadingText) {
+  if (!btnEl) return;
+  btnEl._origHtml    = btnEl.innerHTML;
+  btnEl._origDisabled = btnEl.disabled;
+  btnEl.disabled = true;
+  btnEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:7px;">'
+    + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite;flex-shrink:0"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>'
+    + (loadingText || 'جارٍ الحفظ...') + '</span>';
+}
+function _btnReset(btnEl) {
+  if (!btnEl) return;
+  btnEl.disabled = btnEl._origDisabled || false;
+  btnEl.innerHTML = btnEl._origHtml || btnEl.innerHTML;
 }
 
 function escapeHtml(value) {
