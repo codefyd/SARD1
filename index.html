@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -709,6 +708,7 @@
   </div>
 
   <div class="d-flex align-center gap-2">
+    <span id="navComplexBadge" style="font-size:.72rem;color:rgba(255,255,255,.55);background:rgba(255,255,255,0.1);padding:3px 9px;border-radius:12px;display:none;"></span>
     <span id="navTeacher" style="font-size:.85rem;color:rgba(255,255,255,.8);"></span>
     <button onclick="doLogout()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:1rem;" title="تسجيل خروج">
       <i class="fas fa-sign-out-alt"></i>
@@ -1078,14 +1078,37 @@
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbwhK6Xt_lWe4jGidKO4n-yT774a047rvxRhzX6fklakJM0_5QXEEmtWz-GpjPGw2ZAS/exec";
-try { localStorage.setItem('sard_api_url', API); } catch(_e) {}
+// =============================================
+// API CONFIG — متعدد المجمعات
+// =============================================
+const API = "https://script.google.com/macros/s/AKfycbzUcnpxuZxXDgks1FaZqmo8XN--MaYcCZWFLVuRW5q7HsY93gjG3ff2Qps_ew6Nbql5/exec";
 
+// ── قراءة complexId من الـ URL أو localStorage ──
+(function _initComplexId() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromUrl   = urlParams.get('complexId') || '';
+    if (fromUrl) {
+      localStorage.setItem('sard_complex_id', fromUrl);
+    }
+  } catch(_e) {}
+})();
 
+function _getComplexId() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('complexId') || localStorage.getItem('sard_complex_id') || '';
+  } catch(_e) { return ''; }
+}
 
 function _buildUrl(action, params = {}) {
   const url = new URL(API);
   url.searchParams.set('action', action);
+
+  // إضافة complexId تلقائياً لكل طلب
+  const cid = _getComplexId();
+  if (cid) url.searchParams.set('complexId', cid);
+
   Object.entries(params || {}).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
     url.searchParams.set(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
@@ -1118,6 +1141,11 @@ async function _apiGet(action, params = {}) {
 async function _apiPost(action, payload = {}) {
   const body = new URLSearchParams();
   body.set('action', action);
+
+  // إضافة complexId في الـ POST body
+  const cid = _getComplexId();
+  if (cid) body.set('complexId', cid);
+
   body.set('payload', JSON.stringify(payload || {}));
 
   const res = await fetch(API, {
@@ -1210,6 +1238,21 @@ const STATE = {
 // INIT
 // =============================================
 window.addEventListener('load', () => {
+  // ── التحقق من وجود complexId ──
+  const cid = _getComplexId();
+  if (!cid) {
+    hideSpinner();
+    _showNoComplexBanner();
+    return;
+  }
+
+  // إظهار badge معرّف المجمع
+  const cidBadge = document.getElementById('navComplexBadge');
+  if (cidBadge) { cidBadge.textContent = 'مجمع #' + cid; cidBadge.style.display = 'inline'; }
+
+  // إظهار اسم المجمع في شاشة الدخول
+  _injectComplexInfoInLogin(cid);
+
   const saved = localStorage.getItem('sard_teacher') || '';
   if (saved) {
     STATE.teacher = saved;
@@ -1219,6 +1262,48 @@ window.addEventListener('load', () => {
     hideSpinner();
   }
 });
+
+function _injectComplexInfoInLogin(cid) {
+  // سيتم تحديثه بعد تحميل البيانات من الـ API
+  // في الوقت الحالي نعرض رقم المجمع فقط
+  try {
+    const loginHeader = document.querySelector('.login-header');
+    if (loginHeader && !loginHeader.querySelector('.complex-sub')) {
+      const sub = document.createElement('p');
+      sub.className = 'complex-sub';
+      sub.style.cssText = 'margin-top:6px;font-size:.78rem;opacity:.65;direction:ltr;letter-spacing:.03em;';
+      sub.textContent = 'Complex #' + cid;
+      loginHeader.appendChild(sub);
+    }
+  } catch(_) {}
+}
+
+function _showNoComplexBanner() {
+  document.getElementById('spinner').style.display = 'none';
+  try { document.getElementById('loginWrap').style.display = 'none'; } catch(_){}
+  const banner = document.createElement('div');
+  banner.style.cssText = 'min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#f4f6f9;font-family:Tajawal,sans-serif;';
+  banner.innerHTML = `
+    <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(1,73,121,0.14);padding:40px 32px;text-align:center;max-width:440px;width:100%;">
+      <div style="width:68px;height:68px;border-radius:50%;background:#e8f2fb;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:1.8rem;color:#014979;">
+        <i class="fas fa-link"></i>
+      </div>
+      <h2 style="font-size:1.3rem;font-weight:800;color:#014979;margin-bottom:10px;">لا يوجد رابط مجمع</h2>
+      <p style="font-size:.9rem;color:#64748b;line-height:1.7;margin-bottom:24px;">
+        هذه الصفحة تحتاج إلى رابط خاص بمجمعك.<br/>
+        إذا لم يكن لديك رابط بعد، أنشئه الآن.
+      </p>
+      <a href="register.html" style="display:inline-flex;align-items:center;gap:8px;background:#014979;color:#fff;padding:12px 28px;border-radius:8px;font-weight:700;font-size:1rem;text-decoration:none;">
+        <i class="fas fa-plus-circle"></i>
+        إنشاء رابط مجمعي
+      </a>
+      <div style="margin-top:16px;">
+        <small style="color:#94a3b8;font-size:.8rem;">إذا كان لديك رابط، تواصل مع مشرف المجمع للحصول عليه</small>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(banner);
+}
 
 function showApp() {
   document.getElementById('loginWrap').style.display = 'none';
